@@ -4,7 +4,7 @@ layer {
   type: "Data"
   top: "data"
   data_param {
-    source: "../toycar_data"
+    source: "toycar_data"
     batch_size: 100
     backend: LMDB
   }
@@ -14,7 +14,7 @@ layer {
   type: "Data"
   top: "label"
   data_param {
-    source: "../toycar_labels"
+    source: "toycar_labels"
     batch_size: 100
     backend: LMDB
   }
@@ -33,15 +33,7 @@ layer {
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 50
-    weight_filler {
-      type: "gaussian"
-      std: 0.001
-    }
-    bias_filler {
-      type: "constant"
-      value: 0.01
-    }
+    num_output: 500
   }
 }
 
@@ -65,16 +57,8 @@ layer {
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 50
-    weight_filler {
-      type: "gaussian"
-      std: 0.001
+    num_output: 500
     }
-    bias_filler {
-      type: "constant"
-      value: 0.01
-    }
-  }
 }
 layer {
   name: "relu2"
@@ -95,16 +79,9 @@ layer {
     lr_mult: 2
     decay_mult: 0
   }
+
   inner_product_param {
     num_output: 5
-    weight_filler {
-      type: "gaussian"
-      std: 0.001
-    }
-    bias_filler {
-      type: "constant"
-      value: 0.01
-    }
   }
 }
 layer {
