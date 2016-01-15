@@ -5,7 +5,7 @@ layer {
   top: "data"
   data_param {
     source: "../toycar_data"
-    batch_size: 100
+    batch_size: 10
     backend: LMDB
   }
 }
@@ -15,7 +15,7 @@ layer {
   top: "label"
   data_param {
     source: "../toycar_labels"
-    batch_size: 100
+    batch_size: 10
     backend: LMDB
   }
 }
