@@ -1,0 +1,11 @@
+# Caffe Models
+*.caffemodel*
+
+# Solver States
+*.solverstate
+
+# Images
+*.png
+
+# Data
+*.hdf5

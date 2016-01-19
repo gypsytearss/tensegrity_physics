@@ -9,19 +9,10 @@ layer {
   type: "InnerProduct"
   bottom: "data"
   top: "fc1"
-  param {
-    lr_mult: 1
-    decay_mult: 0
-  }
-  param {
-    lr_mult: 2
-    decay_mult: 0
-  }
   inner_product_param {
-    num_output: 50
+    num_output: 10
   }
 }
-
 layer {
   name: "relu1"
   type: "ReLU"
@@ -33,16 +24,8 @@ layer {
   type: "InnerProduct"
   bottom: "fc1"
   top: "fc2"
-  param {
-    lr_mult: 1
-    decay_mult: 0
-  }
-  param {
-    lr_mult: 2
-    decay_mult: 0
-  }
   inner_product_param {
-    num_output: 50
+    num_output: 10
   }
 }
 layer {
@@ -56,14 +39,6 @@ layer {
   type: "InnerProduct"
   bottom: "fc2"
   top: "fc3"
-  param {
-    lr_mult: 1
-    decay_mult: 0
-  }
-  param {
-    lr_mult: 2
-    decay_mult: 0
-  }
   inner_product_param {
     num_output: 5
   }
