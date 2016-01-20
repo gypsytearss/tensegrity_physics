@@ -16,9 +16,9 @@ stepsize: 37000
 gamma: 0.1
 # power: 0.75
 # Display every 100 iterations
-display: 37000
+display: 2000
 # The maximum number of iterations
-max_iter: 2240000
+max_iter: 112000
 # snapshot intermediate results
 snapshot_prefix: "2fc"
 # solver mode: CPU or GPU
