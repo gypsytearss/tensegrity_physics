@@ -10,7 +10,7 @@ layer {
   bottom: "data"
   top: "fc1"
   inner_product_param {
-    num_output: 10
+    num_output: 1000
   }
 }
 layer {
@@ -25,7 +25,7 @@ layer {
   bottom: "fc1"
   top: "fc2"
   inner_product_param {
-    num_output: 10
+    num_output: 1000
   }
 }
 layer {
