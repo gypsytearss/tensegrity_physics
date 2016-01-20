@@ -9,3 +9,10 @@
 
 # Data
 *.hdf5
+
+#others
+*.bak
+*.npy
+data_output_50Hz.txt
+toycar_data
+toycar_labels
