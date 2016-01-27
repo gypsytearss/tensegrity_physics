@@ -41,7 +41,7 @@ layer {
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 1000
+    num_output: 500
     weight_filler {
       type: "xavier"
     }
@@ -58,15 +58,6 @@ layer {
   top: "fc1"
 }
 layer {
-  name: "drop1"
-  type: "Dropout"
-  bottom: "fc1"
-  top: "fc1"
-  dropout_param {
-    dropout_ratio: 0.5
-  }
-}
-layer {
   name: "fc2"
   type: "InnerProduct"
   bottom: "fc1"
@@ -80,7 +71,7 @@ layer {
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 1000
+    num_output: 500
     weight_filler {
       type: "xavier"
     }
@@ -94,15 +85,6 @@ layer {
   type: "ReLU"
   bottom: "fc2"
   top: "fc2"
-}
-layer {
-  name: "drop2"
-  type: "Dropout"
-  bottom: "fc2"
-  top: "fc2"
-  dropout_param {
-    dropout_ratio: 0.5
-  }
 }
 layer {
   name: "fc3"
@@ -134,3 +116,4 @@ layer {
   bottom: "label"
   top: "loss"
 }
+
