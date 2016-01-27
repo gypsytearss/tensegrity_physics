@@ -12,7 +12,6 @@ layer {
     batch_size: 100
   }
 }
-
 layer {
   name: "data"
   type: "HDF5Data"
@@ -33,7 +32,7 @@ layer {
   bottom: "data"
   top: "fc1"
   param {
-    lr_mult: 1
+    lr_mult: 2
     decay_mult: 0
   }
   param {
@@ -63,7 +62,7 @@ layer {
   bottom: "fc1"
   top: "fc2"
   param {
-    lr_mult: 1
+    lr_mult: 2
     decay_mult: 0
   }
   param {
@@ -92,7 +91,7 @@ layer {
   bottom: "fc2"
   top: "fc3"
   param {
-    lr_mult: 1
+    lr_mult: 2
     decay_mult: 0
   }
   param {
