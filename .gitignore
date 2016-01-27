@@ -16,3 +16,6 @@
 data_output_50Hz.txt
 toycar_data
 toycar_labels
+toycar_data_100sample
+toycar_labels_100sample
+temp
