@@ -13,7 +13,7 @@ momentum: 0.9
 # regularization_type: "L2"
 # The learning rate policy
 lr_policy: "step"
-stepsize: 1000
+stepsize: 10000
 gamma: 0.1
 # power: 0.75
 # Display every 100 iterations
@@ -24,5 +24,5 @@ max_iter: 20000
 snapshot_prefix: "2fc"
 # solver mode: CPU or GPU
 solver_mode: GPU
-type: "Adam"
+solver_type: NESTEROV
 # debug_info: true
