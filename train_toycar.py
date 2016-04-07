@@ -64,9 +64,9 @@ def load_data():
                 controls.append([float(val) for val in vals])
             elif i % 3 == 2:
                 durations.append([float(val) for val in vals])
-                
+               
             i += 1
-            
+
     X = np.concatenate((start_states, controls, durations), axis=1)
     start_states = np.asarray(start_states, dtype=np.float32)
     end_states = np.asarray(end_states, dtype=np.float32)
