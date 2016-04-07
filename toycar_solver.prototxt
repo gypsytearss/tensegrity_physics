@@ -7,22 +7,22 @@ test_iter: 500
 # Carry out testing every 500 training iterations.
 test_interval: 100
 # The base learning rate, momentum and the weight decay of the network.
-base_lr: 0.001
+base_lr: 0.1
 momentum: 0.9
-# weight_decay: 0.00005
-# regularization_type: "L2"
+weight_decay: 0.0005
+regularization_type: "L2"
 # The learning rate policy
 lr_policy: "step"
-stepsize: 10000
+stepsize: 20000
 gamma: 0.1
 # power: 0.75
 # Display every 100 iterations
 display: 100
 # The maximum number of iterations
-max_iter: 20000
+max_iter: 100000
 # snapshot intermediate results
 snapshot_prefix: "2fc"
 # solver mode: CPU or GPU
-solver_mode: GPU
+solver_mode: CPU
 solver_type: NESTEROV
 # debug_info: true
