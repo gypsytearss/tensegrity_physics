@@ -1,1 +1,1 @@
-/home/colin/Repos/prx_ws/src/prx_learn/external/caffe/examples/toy_car/PhysicsLearner/toycar_hdf5_data_norm11_train.hdf5
+/home/colin/Repos/prx_ws/src/prx_learn/external/caffe/examples/toy_car/PhysicsLearner/toycar_short_traj_train.hdf5

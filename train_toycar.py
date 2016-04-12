@@ -87,6 +87,8 @@ class Network:
                            axis=1)
         self.start_states = np.asarray(self.start_states, dtype=np.float32)
         self.end_states = np.asarray(self.end_states, dtype=np.float32)
+        self.controls = np.asarray(self.controls, dtype=np.float32)
+        self.durations = np.asarray(self.durations, dtype=np.float32)
 
         X = self.normalize_data(X)
         y = self.normalize_labels()
@@ -99,6 +101,11 @@ class Network:
 
         self.test_data = X[X.shape[0]*0.9:, :]
         self.test_labels = y[X.shape[0]*0.9:, :]
+
+        self.save_data_as_hdf5('toycar_short_traj_train.hdf5', 
+                               self.train_data, self.train_labels)
+        self.save_data_as_hdf5('toycar_short_traj_test.hdf5', 
+                               self.train_data, self.train_labels)
 
     def write_binaryproto(self, data, string):
         blob = caffe.proto.caffe_pb2.BlobProto()
