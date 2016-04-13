@@ -27,22 +27,27 @@ import caffe
 import caffe.draw
 import google.protobuf 
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
-class Network:
+class Model:
     '''
-    Initialize Network instance with arg structure:
-    <datapath, solverpath, structurepath, deploypath, weightspath>
+    Data containers and Visualization functions for models
     '''
-    def __init__(self, datapath, solverpath, 
-                 structurepath, deploypath, 
-                 weightspath=os.path.abspath('.') + 
-                             '2fc_iter_100000.caffemodel'):
+    def __init__(self, datapath ):
         self.datapath = datapath
-        self.solverpath = solverpath
-        self.structurepath = structurepath
-        self.deploypath = deploypath
-        self.weightspath = weightspath
         self.load_data()
+
+    def plot2d(x, y, c='r'):
+        c = plt.scatter(x, y, c=c)
+        plt.colorbar(c)
+        plt.show()
+
+    def plot3d(x, y, z, sz=2):
+        fig = plt.figure()
+        ax = plt.subplot(111, projection='3d')
+        ax.plot(x, y, z, 'o', ms=sz)
+        plt.show()
 
     def load_data(self):
         '''
@@ -95,54 +100,18 @@ class Network:
 
         indices = np.random.permutation(X.shape[0])
         training_idx = indices[:X.shape[0]*0.9]
+        testing_idx = indices[X.shape[0]*0.9:]
 
         self.train_data = X[training_idx, :]
         self.train_labels = y[training_idx, :]
 
-        self.test_data = X[X.shape[0]*0.9:, :]
-        self.test_labels = y[X.shape[0]*0.9:, :]
+        self.test_data = X[testing_idx, :]
+        self.test_labels = y[testing_idx, :]
 
-        self.save_data_as_hdf5('toycar_short_traj_train.hdf5', 
+        self.save_data_as_hdf5('toycar_train.hdf5', 
                                self.train_data, self.train_labels)
-        self.save_data_as_hdf5('toycar_short_traj_test.hdf5', 
+        self.save_data_as_hdf5('toycar_test.hdf5', 
                                self.train_data, self.train_labels)
-
-    def write_binaryproto(self, data, string):
-        blob = caffe.proto.caffe_pb2.BlobProto()
-        blob.channels = data.shape[0]
-        blob.data.extend(data.astype(float).flat)
-        binaryproto_file = open('toycar_' + string + '.binaryproto', 'wb')
-        binaryproto_file.write(blob.SerializeToString())
-        binaryproto_file.close()
-
-    def save_binaryproto(self, data, ftype='mean'):
-        '''
-        Take the mean values of the raw data and store them as binaryproto type
-        In order to use them later for deploy normalization
-        '''
-        # Convert to 32bit float
-        data = np.array(data, dtype=np.float32)
-
-        # Set project home dir
-        PROJECT_HOME = os.path.abspath('.')
-
-        # Initialize blob to store serialized means
-        blob = caffe.proto.caffe_pb2.BlobProto()
-
-        # Custom dimensions for blob for this project
-        blob.num = 1
-        blob.channels = data.shape[0]
-        blob.height = 1
-        blob.width = 1
-
-        # Reshape data and copy into blob\n",
-        blob.data.extend(data.astype(float).flat)
-
-        # Write file
-        binaryproto_file = open(PROJECT_HOME + '/toycar_' +
-                                ftype + '.binaryproto', 'wb')
-        binaryproto_file.write(blob.SerializeToString())
-        binaryproto_file.close()
 
     def normalize_labels(self):
         '''
@@ -211,7 +180,6 @@ class Network:
 
         return data
 
-
     def save_data_as_hdf5(self, filename_hdf5, data, labels):
         '''
         HDF5 is one of the data formats Caffe accepts
@@ -219,6 +187,85 @@ class Network:
         with h5py.File(filename_hdf5, 'w') as f:
             f['data'] = data.astype(np.float32)
             f['label'] = labels.astype(np.float32)
+
+    def write_binaryproto(self, data, string):
+        blob = caffe.proto.caffe_pb2.BlobProto()
+        blob.channels = data.shape[0]
+        blob.data.extend(data.astype(float).flat)
+        binaryproto_file = open('toycar_' + string + '.binaryproto', 'wb')
+        binaryproto_file.write(blob.SerializeToString())
+        binaryproto_file.close()
+
+    def save_binaryproto(self, data, ftype='mean'):
+        '''
+        Take the mean values of the raw data and store them as binaryproto type
+        In order to use them later for deploy normalization
+        '''
+        # Convert to 32bit float
+        data = np.array(data, dtype=np.float32)
+
+        # Set project home dir
+        PROJECT_HOME = os.path.abspath('.')
+
+        # Initialize blob to store serialized means
+        blob = caffe.proto.caffe_pb2.BlobProto()
+
+        # Custom dimensions for blob for this project
+        blob.num = 1
+        blob.channels = data.shape[0]
+        blob.height = 1
+        blob.width = 1
+
+        # Reshape data and copy into blob\n",
+        blob.data.extend(data.astype(float).flat)
+
+        # Write file
+        binaryproto_file = open(PROJECT_HOME + '/toycar_' +
+                                ftype + '.binaryproto', 'wb')
+        binaryproto_file.write(blob.SerializeToString())
+        binaryproto_file.close()
+
+
+class Network(Model):
+    '''
+    Initialize Network instance with arg structure:
+    <datapath, solverpath, structurepath, deploypath, weightspath>
+    '''
+    def __init__(self, datapath, solverpath, 
+                 structurepath, deploypath, 
+                 weightspath=os.path.abspath('.') + 
+                             '2fc_iter_100000.caffemodel',):
+        '''
+        Initialize ANN with existing model
+        '''
+        self.datapath = datapath
+        self.solverpath = solverpath
+        self.structurepath = structurepath
+        self.deploypath = deploypath
+        self.weightspath = weightspath
+        self.load_data()
+
+    def __init__(self, model, datapath, solverpath, 
+                 structurepath, deploypath, 
+                 weightspath=os.path.abspath('.') + 
+                             '2fc_iter_100000.caffemodel',):
+        '''
+        Initialize ANN with existing model
+        '''
+        self.datapath = datapath
+        self.solverpath = solverpath
+        self.structurepath = structurepath
+        self.deploypath = deploypath
+        self.weightspath = weightspath
+
+        self.controls = model.controls
+        self.durations = model.durations
+        self.end_states = model.end_states
+        self.start_states = model.start_states
+        self.train_data = model.train_data
+        self.train_labels = model.train_labels
+        self.test_data = model.test_data
+        self.test_labels = model.test_labels
 
     def print_network_parameters(self, net):
         '''
@@ -274,7 +321,7 @@ class Network:
         '''
         outputs = []
         net = caffe.Net(self.deploypath, self.weightspath, caffe.TRAIN)
-        out = net.forward(data=input)
+        out = net.forward(data=inputs)
         output = out[net.outputs[0]]
         outputs.append(copy.deepcopy(output))
 
@@ -290,16 +337,26 @@ class Network:
         solver = caffe.get_solver(self.solverpath)
         solver.solve()
 
-    def test(self):
+    def test(self, datalines=[]):
         '''
         Performs Testing of the specified network
         '''
-        outputs = self.get_predicted_outputs(self.test_data)
-        print "Labels:"
-        print self.test_labels
+        if datalines == []:
+            datalines = self.test_data
+        outputs = np.asarray([[0, 0, 0, 0, 0]])
+        for data in datalines:
+            data_in = np.asarray([data])
+            outputs = np.append(outputs,
+                                self.get_predicted_outputs(data_in)[0],
+                                axis=0)
+        outputs = outputs[1:, :]
+        # print "Labels:"
+        # print self.test_labels
 
-        print "Predictions: "
-        print outputs
+        # print "Predictions: "
+        # print outputs
+
+        return outputs
 
     def euclidean_loss(pred, labels):
         '''
