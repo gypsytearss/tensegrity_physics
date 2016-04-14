@@ -88,12 +88,21 @@ class Model:
                     self.durations.append([float(val) for val in vals])
                 i += 1
 
-        X = np.concatenate((self.start_states, self.controls, self.durations),
-                           axis=1)
         self.start_states = np.asarray(self.start_states, dtype=np.float32)
         self.end_states = np.asarray(self.end_states, dtype=np.float32)
         self.controls = np.asarray(self.controls, dtype=np.float32)
         self.durations = np.asarray(self.durations, dtype=np.float32)
+
+        print "start states: ", self.start_states.shape
+        for i in range(0, len(self.start_states)):
+            if np.abs(self.end_states[i, 2] - self.start_states[i, 2]) > 5:
+                if self.end_states[i, 2] > 0:
+                    self.end_states[i, 2] -= 2*np.pi
+                else:
+                    self.end_states[i, 2] += 2*np.pi            
+
+        X = np.concatenate((self.start_states, self.controls, self.durations),
+                           axis=1)
 
         X = self.normalize_data(X)
         y = self.normalize_labels()
@@ -105,8 +114,8 @@ class Model:
         self.train_data = X[training_idx, :]
         self.train_labels = y[training_idx, :]
 
-        self.test_data = X[testing_idx, :]
-        self.test_labels = y[testing_idx, :]
+        self.test_data = X[900000:1000000, :]
+        self.test_labels = y[900000:1000000, :]
 
         self.save_data_as_hdf5('toycar_train.hdf5', 
                                self.train_data, self.train_labels)
@@ -129,8 +138,8 @@ class Model:
 
         data = data - desired_min
         for i in range(0, data.shape[1]):
-            data[:, i] = data[:, i] * (self.max[:, i] - self.min[:, i]) \
-                        / desired_rng + self.min[:, i] + self.mean[:, i]
+            data[:, i] = data[:, i] * (self.max[i] - self.min[i]) \
+                        / desired_rng + self.min[i] + self.mean[i]
 
         return data
 
@@ -332,7 +341,7 @@ class Network(Model):
         showing resulting learned weights and histograms of weights
         '''
         # Train network
-        # caffe.set_mode_gpu()
+        caffe.set_mode_gpu()
         solver = caffe.get_solver(self.solverpath)
         solver.solve()
 
