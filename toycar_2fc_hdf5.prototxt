@@ -8,7 +8,7 @@ layer {
     phase: TRAIN
   }
   hdf5_data_param {
-    source: "/home/colin/Repos/prx_ws/src/prx_learn/external/caffe/examples/toy_car/PhysicsLearner/toycar_load_hdf5_train.txt"
+    source: "/home/colin/repos/PhysicsLearner/toycar_load_hdf5_train.txt"
     batch_size: 100
   }
 }
@@ -21,7 +21,7 @@ layer {
     phase: TEST
   }
   hdf5_data_param {
-    source: "/home/colin/Repos/prx_ws/src/prx_learn/external/caffe/examples/toy_car/PhysicsLearner/toycar_load_hdf5_test.txt"
+    source: "/home/colin/repos/PhysicsLearner/toycar_load_hdf5_test.txt"
     batch_size: 100
   }
 }

@@ -1,5 +1,4 @@
-'''
-Requirements:
+'''Requirements:
  - Caffe (script to install Caffe and pycaffe on a new Ubuntu 14.04 LTS x64 or Ubuntu 14.10 x64. 
    CPU only, multi-threaded Caffe. http://stackoverflow.com/a/31396229/395857)
  - sudo pip install pydot
@@ -26,6 +25,7 @@ import h5py
 import caffe
 import caffe.draw
 import google.protobuf 
+import GPy
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -38,12 +38,12 @@ class Model:
         self.datapath = datapath
         self.load_data()
 
-    def plot2d(x, y, c='r'):
+    def plot2d(self, x, y, c='r'):
         c = plt.scatter(x, y, c=c)
         plt.colorbar(c)
         plt.show()
 
-    def plot3d(x, y, z, sz=2):
+    def plot3d(self, x, y, z, sz=2):
         fig = plt.figure()
         ax = plt.subplot(111, projection='3d')
         ax.plot(x, y, z, 'o', ms=sz)
@@ -245,14 +245,13 @@ class Network(Model):
         self.weightspath = weightspath
         self.load_data()
 
-    def __init__(self, model, datapath, solverpath, 
+    def __init__(self, model, solverpath, 
                  structurepath, deploypath, 
                  weightspath=os.path.abspath('.') + 
                              '2fc_iter_100000.caffemodel',):
         '''
         Initialize ANN with existing model
         '''
-        self.datapath = datapath
         self.solverpath = solverpath
         self.structurepath = structurepath
         self.deploypath = deploypath
@@ -333,7 +332,7 @@ class Network(Model):
         showing resulting learned weights and histograms of weights
         '''
         # Train network
-        caffe.set_mode_gpu()
+        # caffe.set_mode_gpu()
         solver = caffe.get_solver(self.solverpath)
         solver.solve()
 
@@ -369,3 +368,35 @@ class Network(Model):
         loss = np.sum(loss, axis=0) / (2 * size)
 
         print "Euclidean Loss: ", loss
+
+
+class SGPRegression(Model):
+    def __init__(self, model):
+        self.controls = model.controls
+        self.durations = model.durations
+        self.end_states = model.end_states
+        self.start_states = model.start_states
+        self.train_data = model.train_data
+        self.train_labels = model.train_labels
+        self.test_data = model.test_data
+        self.test_labels = model.test_labels
+
+    def train(self, data=[], labels=[]):
+        np.random.seed(101)
+
+        if data == []:
+            data = self.train_data[:10000, :]
+        if labels == []:
+            labels = self.train_labels[:10000, :]
+
+        X = np.array(data)
+        Y = np.array(labels)
+        
+        rbf = GPy.kern.RBF(8)
+        self.model = GPy.models.SparseGPRegression(X, Y, kernel=rbf, 
+                                                   num_inducing=250)
+        
+        self.model.optimize('tnc', messages=1, max_iters=100)
+
+    def test(self, data):
+        return self.model.predict(data)

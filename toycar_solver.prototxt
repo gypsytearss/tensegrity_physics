@@ -23,6 +23,6 @@ max_iter: 20000
 # snapshot intermediate results
 snapshot_prefix: "2fc"
 # solver mode: CPU or GPU
-solver_mode: GPU
+solver_mode: CPU
 solver_type: NESTEROV
 # debug_info: true
