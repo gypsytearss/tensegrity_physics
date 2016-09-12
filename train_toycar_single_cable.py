@@ -103,7 +103,11 @@ class Model:
                 else:
                     self.end_states[i, 2] += 2*np.pi 
 
-        X = np.concatenate((self.start_states, self.controls, self.durations),
+        # REVERT indexing
+        # print self.start_states[:,147:150].shape
+        # print self.controls[:,23:24].shape
+        # print self.durations.shape
+        X = np.concatenate((self.start_states[:,147:150], self.controls[:,23:24], self.durations),
                            axis=1)
 
         X = self.normalize_data(X)
@@ -113,11 +117,12 @@ class Model:
         training_idx = indices[:X.shape[0]*0.9]
         testing_idx = indices[X.shape[0]*0.9:]
 
+        # REVERT indexing
         self.train_data = X[training_idx, :]
-        self.train_labels = y[training_idx, :]
+        self.train_labels = y[training_idx, 147:150]
 
         self.test_data = X[testing_idx, :]
-        self.test_labels = y[testing_idx, :]
+        self.test_labels = y[testing_idx, 147:150]
 
         outdir = "."
         if self.prefix == "tensegrity":

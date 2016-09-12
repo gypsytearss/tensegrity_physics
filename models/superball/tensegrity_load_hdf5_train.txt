@@ -1,0 +1,1 @@
+/home/colin/repos/PhysicsLearner/models/superball/tensegrity_train.hdf5
