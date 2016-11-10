@@ -4,6 +4,10 @@
 # Solver States
 *.solverstate
 
+# Python
+*.pyc
+*~
+
 # Images
 *.png
 
@@ -13,7 +17,7 @@
 #others
 *.bak
 *.npy
-data_output_50Hz.txt
+*.txt
 toycar_data
 toycar_labels
 toycar_data_100sample
