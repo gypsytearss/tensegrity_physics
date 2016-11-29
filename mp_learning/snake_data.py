@@ -56,10 +56,11 @@ class Model:
         Load Data into class for training and testing
         '''
         self.start_states = []
-        self.embedded_start_states = []
+        # self.embedded_start_states = []
         self.controls = []
         self.end_states = []
-        self.embedded_end_states = []
+        self.durations = []
+        # self.embedded_end_states = []
 
         with open(self.datapath, 'r') as infile:
             data = infile.readlines()
@@ -81,38 +82,39 @@ class Model:
                 # Split Values in line and append to individual lists
                 vals = line.split(',')
                 if i % 5 == 0:
-                    self.embedded_start_states.append([float(val) for val in vals])
-                elif i % 5 == 1:
                     self.start_states.append([float(val) for val in vals])
-                elif i % 5 == 2:
+                elif i % 5 == 1:
                     self.controls.append([float(val) for val in vals])
+                elif i % 5 == 2:
+                    self.durations.append([float(val) for val in vals])
                 elif i % 5 == 3:
-                    self.embedded_end_states.append([float(val) for val in vals])
-                elif i % 5 == 4:
-                    # if np.sum(np.abs(np.asarray(self.embedded_end_states, dtype=np.float32)[-1, 1:4] -
-                    #           np.asarray(self.embedded_start_states, dtype=np.float32)[-1, 1:4])) < 5:
-                    #     self.controls.pop()
-                    #     self.start_states.pop()
-                    #     self.embedded_start_states.pop()
-                    #     self.embedded_end_states.pop()
-                    # elif np.abs(np.asarray(self.start_states, dtype=np.float32)[-1, 9:26]).any()>1:
-                    #     print "rejecting: ", [val for val in vals]
-                    #     print "length: ", len(vals)
-                    #     self.controls.pop()
-                    #     self.start_states.pop()
-                    #     self.embedded_start_states.pop()
-                    #     self.embedded_end_states.pop()
-                    # else:
                     self.end_states.append([float(val) for val in vals])
                     idx += 1
+                # elif i % 5 == 4:
+                #     if np.sum(np.abs(np.asarray(self.embedded_end_states, dtype=np.float32)[-1, 1:4] -
+                #               np.asarray(self.embedded_start_states, dtype=np.float32)[-1, 1:4])) < 5:
+                #         self.controls.pop()
+                #         self.start_states.pop()
+                #         self.embedded_start_states.pop()
+                #         self.embedded_end_states.pop()
+                #     elif np.abs(np.asarray(self.start_states, dtype=np.float32)[-1, 9:26]).any()>1:
+                #         print "rejecting: ", [val for val in vals]
+                #         print "length: ", len(vals)
+                #         self.controls.pop()
+                #         self.start_states.pop()
+                #         self.embedded_start_states.pop()
+                #         self.embedded_end_states.pop()
+                #     else:
+                #     self.end_states.append([float(val) for val in vals])
                 i += 1
 
-        self.embedded_start_states = np.asarray(self.embedded_start_states, dtype=np.float32)
+        # self.embedded_start_states = np.asarray(self.embedded_start_states, dtype=np.float32)
         self.controls = np.asarray(self.controls, dtype=np.float32)
-        print self.embedded_start_states.shape
-        print self.controls.shape
+        self.durations = np.asarray(self.durations, dtype=np.float32)
+        # print self.embedded_start_states.shape
+        # print self.controls.shape
         self.start_states = np.asarray(self.start_states, dtype=np.float32)[:, 0:91]
-        self.embedded_end_states = np.asarray(self.embedded_end_states, dtype=np.float32)
+        # self.embedded_end_states = np.asarray(self.embedded_end_states, dtype=np.float32)
         self.end_states = np.asarray(self.end_states, dtype=np.float32)[:, 0:91]
 
         # Concatenate (1) normalized start states and (2) planar movement class
