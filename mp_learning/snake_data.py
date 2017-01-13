@@ -31,6 +31,22 @@ import GPy
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+def normalize(angle, min_, max_):
+    if angle < min_:
+        return angle + 2*np.pi
+    if angle > max_:
+        return angle - 2*np.pi
+    return angle
+
+    
+def unit_vector(vector):
+    return vector / np.linalg.norm(vector)
+
+def angle_between(v1, v2):
+    v1_u = unit_vector(v1)
+    v2_u = unit_vector(v2)
+    return normalize(np.arctan2(v1_u[0], v1_u[1]) - np.arctan2(v2_u[0], v2_u[1]), -3.1415, 3.1415)
+
 class Model:
     '''
     Data containers and Visualization functions for models
@@ -39,6 +55,45 @@ class Model:
         self.datapath = datapath
         self.prefix = prefix
         self.load_data()
+
+    # 1 - Calculate slope of points, input: 1x91 snake state array
+    def slope (self, idx1, idx2, m="no_debug" ):
+        X, Y = [], []
+        x_mid = self.states[idx1,idx2,39]
+        y_mid = self.states[idx1,idx2,40]
+        for i in [0,6]:
+            X.append(self.states[idx1,idx2,i*13] )
+            Y.append(self.states[idx1,idx2,(i*13)+1] )
+        s_x = np.std(X)
+        s_y = np.std(Y)
+        corr_x_y = np.corrcoef(X,Y)
+        slope = corr_x_y[0,1]*(s_y / s_x)
+        quadrant = 0
+        point = []
+        if (X[0] > X[-1]) and (slope >= 0.0):
+            quadrant = 1
+            point = [1, slope]
+        elif (X[0] < X[-1]) and (slope < 0.0):
+            quadrant = 2
+            point = [-1, -slope]
+        elif (X[0] < X[-1]) and (slope >= 0.0):
+            quadrant = 3
+            point = [-1, -slope]
+        elif (X[0] > X[-1]) and (slope < 0.0):
+            quadrant = 4
+            point = [1, slope]
+        else:
+            raise ValueError("Invalid slope/quadrant computation")
+        if (m == "debug"):
+            print "X: ",X
+            print "Y: ",Y
+            print "quad: ", quadrant
+            print "slope: ", slope
+            print "point: ", point
+            point1 = [10, 10*slope]
+            point2 = [-10, -10*slope]
+            plot_snake_state_pts(X,Y, point1, point2)
+        return point, quadrant
 
     def plot2d(self, x, y, c='r'):
         c = plt.scatter(x, y, c=c)
@@ -55,16 +110,19 @@ class Model:
         '''
         Load Data into class for training and testing
         '''
-        self.start_states = []
-        # self.embedded_start_states = []
+        self.states = []
         self.controls = []
-        self.end_states = []
         self.durations = []
-        # self.embedded_end_states = []
+        self.disp_angles = []
+        self.disp = []
+        self.disp_along_heading = []
+        self.heading_change_norm = []
+        self.heading_change = []
 
         with open(self.datapath, 'r') as infile:
             data = infile.readlines()
             idx, i = 0, 0
+            state_seq = []
 
             # Stop at end of file
             for line in data:
@@ -73,160 +131,103 @@ class Model:
                     break
                 # Reset and continue at Trajectory break
                 if len(line) == 1:
-                    # self.start_states.pop()
                     i = 0
-                    # if idx > 5000:
-                    #     print "done Reading"
-                    #     break
+                    seq = np.asarray(state_seq, dtype=np.float32)[:, 0:91]
+                    self.states.append(seq)
+                    state_seq = []
+                    idx += 1
                     continue
                 # Split Values in line and append to individual lists
                 vals = line.split(',')
-                if i % 5 == 0:
-                    self.start_states.append([float(val) for val in vals])
-                elif i % 5 == 1:
+                if i == 0:
                     self.controls.append([float(val) for val in vals])
-                elif i % 5 == 2:
+                elif i == 1:
                     self.durations.append([float(val) for val in vals])
-                elif i % 5 == 3:
-                    self.end_states.append([float(val) for val in vals])
-                    idx += 1
-                # elif i % 5 == 4:
-                #     if np.sum(np.abs(np.asarray(self.embedded_end_states, dtype=np.float32)[-1, 1:4] -
-                #               np.asarray(self.embedded_start_states, dtype=np.float32)[-1, 1:4])) < 5:
-                #         self.controls.pop()
-                #         self.start_states.pop()
-                #         self.embedded_start_states.pop()
-                #         self.embedded_end_states.pop()
-                #     elif np.abs(np.asarray(self.start_states, dtype=np.float32)[-1, 9:26]).any()>1:
-                #         print "rejecting: ", [val for val in vals]
-                #         print "length: ", len(vals)
-                #         self.controls.pop()
-                #         self.start_states.pop()
-                #         self.embedded_start_states.pop()
-                #         self.embedded_end_states.pop()
-                #     else:
-                #     self.end_states.append([float(val) for val in vals])
+                elif i >= 2:
+                    state_seq.append([float(val) for val in vals])
+
                 i += 1
 
-        # self.embedded_start_states = np.asarray(self.embedded_start_states, dtype=np.float32)
         self.controls = np.asarray(self.controls, dtype=np.float32)
         self.durations = np.asarray(self.durations, dtype=np.float32)
-        # print self.embedded_start_states.shape
-        # print self.controls.shape
-        self.start_states = np.asarray(self.start_states, dtype=np.float32)[:, 0:91]
-        # self.embedded_end_states = np.asarray(self.embedded_end_states, dtype=np.float32)
-        self.end_states = np.asarray(self.end_states, dtype=np.float32)[:, 0:91]
+        self.states = np.asarray(self.states, dtype=np.float32)
 
-        # Concatenate (1) normalized start states and (2) planar movement class
-        # in order to have our desired input data
-        # X = self.start_states
-        # X = self.normalize_data(X)
+        # 2 - Remove displacement(sqrt(dx^2+dy^2) middle link) < 3.0
+        disp_thresh = []
+        for i,st in enumerate(self.states):
+            disp_10 = np.sqrt(np.square(self.states[i,20,39] - self.states[i,10,39]) + 
+                              np.square(self.states[i,20,40] - self.states[i,10,40]))
+            if disp_10 > 5.0:
+                disp_thresh.append(i)
+        self.states = self.states[disp_thresh]
+        self.controls = self.controls[disp_thresh]
+        self.durations = self.durations[disp_thresh]
 
-        vel_deltas = self.end_states[:, 7:13] - self.start_states[:, 7:13]
-        # mvmt_class = np.zeros((vel_deltas.shape[0],1))
-        # for i, x in enumerate(vel_deltas):
-        #     if x[0] > 0 and x[1] > 0 and np.abs(x[0]) < np.abs(x[1]):
-        #         mvmt_class[i] = 1
-        #     elif x[0] > 0 and x[1] > 0 and np.abs(x[0]) > np.abs(x[1]):
-        #         mvmt_class[i] = 2
-        #     elif x[0] > 0 and x[1] < 0 and np.abs(x[0]) < np.abs(x[1]):
-        #         mvmt_class[i] = 3
-        #     elif x[0] > 0 and x[1] < 0 and np.abs(x[0]) > np.abs(x[1]):
-        #         mvmt_class[i] = 4
-        #     elif x[0] < 0 and x[1] < 0 and np.abs(x[0]) < np.abs(x[1]):
-        #         mvmt_class[i] = 5
-        #     elif x[0] < 0 and x[1] < 0 and np.abs(x[0]) > np.abs(x[1]):
-        #         mvmt_class[i] = 6
-        #     elif x[0] < 0 and x[1] > 0 and np.abs(x[0]) < np.abs(x[1]):
-        #         mvmt_class[i] = 7
-        #     elif x[0] < 0 and x[1] > 0 and np.abs(x[0]) > np.abs(x[1]):
-        #         mvmt_class[i] = 8
-        #     else:
-        #         print "ERROR FUX"
-        
-        self.vel_deltas = np.asarray(vel_deltas, dtype=np.float32)
-        # self.mvmt_class = np.asarray(mvmt_class, dtype=np.float32)
+        # FILTER: Keep only stable gaits (>5 consecutive cycles within +/- 5 deg displacement)
+        # COMPUTE: (1) disp: total diplacement (2) disp_angles: angle of disp of center link (3) disp_along_heading
+        stable_idxs = []
+        for i in range(0,self.states.shape[0]):
+            cons_cycs = 0
+            stable_val = 0.0
+            for j in range(self.states.shape[1]-1,1,-1):
+                start_disp = np.asarray(self.states[i,j-1,39:41])
+                end_disp = np.asarray(self.states[i,j,39:41])
+                
+                start_slope, quadrant = self.slope(i,j-1)
+                end_slope, quadrant = self.slope(i,j)
+                
+                start_vec = np.asarray(start_slope)
+                end_vec = np.asarray((end_disp - start_disp)[0:2])
+                
+                disp_total = np.sqrt(np.sum(np.square(start_disp - end_disp)))
+                disp_angle = angle_between(start_vec, end_vec)*180/np.pi
+                
+                slope_unit = unit_vector(np.asarray(end_slope))
+                disp_along_heading = np.dot(end_vec,slope_unit)
+                
+                head_chg = angle_between(start_slope, end_slope)*180/np.pi
+                
+                if j == self.states.shape[1]-1:
+                    stable_val = disp_angle
+                    self.disp_along_heading.append(disp_along_heading * 1000.0 / self.durations[i])
+                    self.disp_angles.append(disp_angle * 1000.0 / self.durations[i])
+                    self.disp.append(disp_total * 1000.0 / self.durations[i])
+                    self.heading_change.append(head_chg)
+                    self.heading_change_norm.append(head_chg * 1000.0 / self.durations[i])
+                elif ((disp_angle < stable_val + 5.0) and (disp_angle > stable_val - 5.0)):
+                    cons_cycs += 1
+                else:
+                    break
+            if cons_cycs >= 5:
+                stable_idxs.append(i)
+        self.disp_along_heading = np.asarray(self.disp_along_heading)
+        self.disp_angles = np.asarray(self.disp_angles)
+        self.disp = np.asarray(self.disp)
+        self.heading_change_norm = np.asarray(self.heading_change_norm)
+        self.heading_change = np.asarray(self.heading_change)
 
-        # Processing: Classify start configuration into 16 classes for snake
-        #   Based on relative configuration quadrants of the links
-        # pos_deltas = np.concatenate((self.embedded_start_states[:, 4:6],
-        #                              self.embedded_start_states[:, 7:9]),
-        #                             axis=1)
-        # conf_class = np.zeros((pos_deltas.shape[0],1))
-        # for i, x in enumerate(pos_deltas):
-        #     if x[0] > 0 and x[1] > 0:
-        #         if x[2] > 0 and x[3] > 0:
-        #             conf_class[i] = 0
-        #         elif x[2] > 0 and x[3] < 0:
-        #             conf_class[i] = 1
-        #         elif x[2] < 0 and x[3] < 0:
-        #             conf_class[i] = 2
-        #         elif x[2] < 0 and x[3] > 0:
-        #             conf_class[i] = 3
-        #     elif x[0] > 0 and x[1] < 0:
-        #         if x[2] > 0 and x[3] > 0:
-        #             conf_class[i] = 4
-        #         elif x[2] > 0 and x[3] < 0:
-        #             conf_class[i] = 5
-        #         elif x[2] < 0 and x[3] < 0:
-        #             conf_class[i] = 6
-        #         elif x[2] < 0 and x[3] > 0:
-        #             conf_class[i] = 7            
-        #     elif x[0] < 0 and x[1] < 0:
-        #         if x[2] > 0 and x[3] > 0:
-        #             conf_class[i] = 8
-        #         elif x[2] > 0 and x[3] < 0:
-        #             conf_class[i] = 9
-        #         elif x[2] < 0 and x[3] < 0:
-        #             conf_class[i] = 10
-        #         elif x[2] < 0 and x[3] > 0:
-        #             conf_class[i] = 11
-        #     elif x[0] < 0 and x[1] > 0:
-        #         if x[2] > 0 and x[3] > 0:
-        #             conf_class[i] = 12
-        #         elif x[2] > 0 and x[3] < 0:
-        #             conf_class[i] = 13
-        #         elif x[2] < 0 and x[3] < 0:
-        #             conf_class[i] = 14
-        #         elif x[2] < 0 and x[3] > 0:
-        #             conf_class[i] = 15
+        self.disp = self.disp[stable_idxs]
+        self.disp_angles = self.disp_angles[stable_idxs]
+        self.disp_along_heading = self.disp_along_heading[stable_idxs]
+        self.states = self.states[stable_idxs]
+        self.controls = self.controls[stable_idxs]
+        self.durations = self.durations[stable_idxs]
+        self.heading_change = self.heading_change[stable_idxs]
+        self.heading_change_norm = self.heading_change_norm[stable_idxs]
 
-        # X = np.concatenate((np.asarray(conf_class, dtype=np.float32),
-        #                     np.asarray(mvmt_class, dtype=np.float32)), axis=1)
-        # y = self.normalize_labels()
+        # Create Training/Test data and split
+        indices = np.linspace(self.controls.shape[0]-1,0,self.controls.shape[0]-1)
+        training_idx = indices[:self.controls.shape[0]*0.9].astype(int)
+        testing_idx = indices[self.controls.shape[0]*0.9:].astype(int)
 
-        # indices = np.linspace(X.shape[0]-1,0,X.shape[0]-1)
-        # # indices = np.random.permutation(X.shape[0])
-        # training_idx = indices[:X.shape[0]*0.9].astype(int)
-        # testing_idx = indices[X.shape[0]*0.9:].astype(int)
+        self.train_data = self.controls[training_idx, :]
+        self.train_labels = self.heading_change_norm[training_idx, :]
 
-        # self.train_data = X[training_idx, :]
-        # self.train_labels = y[training_idx, :]
+        self.test_data = self.controls[testing_idx, :]
+        self.test_labels = self.heading_change_norm[testing_idx, :]
 
-        # self.test_data = X[testing_idx, :]
-        # self.test_labels = y[testing_idx, :]
-
-        # outdir = "."
-        # if self.prefix == "tensegrity":
-        #     outdir += "/models/superball/"
-        # elif self.prefix == "toycar":
-        #     outdir += "/models/socar/"
-        # elif self.prefix == "snake":
-        #     outdir += "/models/snake/"
-
-        # self.save_data_as_hdf5(outdir + self.prefix + '_train.hdf5', 
-        #                        self.train_data, self.train_labels)
-        # self.save_data_as_hdf5(outdir + self.prefix + '_test.hdf5', 
-        #                        self.train_data, self.train_labels)
 
     def normalize_labels(self):
-        # return self.controls
-        # print "original array: ", np.asarray(self.controls[:,0]).shape
-        # print "addition: ", np.asarray(self.controls[:,0] + self.controls[:, 1]).shape
-        # print "max: ", np.asarray(np.maximum(np.asarray(self.controls[:, 0] + self.controls[:, 1]), np.asarray(-self.controls[:, 0] + self.controls[:, 1]))).shape
-        # print "maxes: ", maxes_1.shape
-        # print "mins: ", mins_1.shape
-
         maxes_1 = np.asarray(np.maximum(np.asarray(self.controls[:, 0] + self.controls[:, 1]), np.asarray(-self.controls[:, 0] + self.controls[:, 1]))).reshape(self.controls.shape[0],1)
         mins_1 = np.asarray(np.minimum(np.asarray(self.controls[:, 0] + self.controls[:, 1]), np.asarray(-self.controls[:, 0] + self.controls[:, 1]))).reshape(self.controls.shape[0],1)
         bounds_1 = np.concatenate((maxes_1,mins_1), axis=1)
@@ -263,9 +264,6 @@ class Model:
         Normalize data to zero mean on [-1,1] interval for all dimensions
         '''
         self.mean = np.mean(data, axis=0)
-
-        # do not substract duration
-        # self.mean[-1] = 0
 
         # Mean Shift
         data = data - self.mean
@@ -506,35 +504,26 @@ class Network(Model):
 
 
 class SGPRegression(Model):
-    def __init__(self, model):
-        self.controls = model.controls
-        self.embedded_end_states = model.embedded_end_states
-        self.end_states = model.end_states
-        self.start_states = model.start_states
-        self.embedded_start_states = model.embedded_start_states
-        self.train_data = model.train_data
-        self.train_labels = model.train_labels
-        self.test_data = model.test_data
-        self.test_labels = model.test_labels
-        # self.mvmt_class = model.mvmt_class
+    def __init__(self, data_model):
+        self.data_model = data_model
 
     def train(self, data=[], labels=[]):
         np.random.seed(101)
 
         if data == []:
-            data = self.train_data[:10000, :]
+            data = self.data_model.train_data[:10000, :]
             print "No data explicitly passed to train(); Using 10k samples."
         if labels == []:
-            labels = self.train_labels[:10000, :]
+            labels = self.data_model.train_labels[:10000, :]
 
         X = np.array(data)
         Y = np.array(labels)
         
         rbf = GPy.kern.RBF(X.shape[1])
         self.model = GPy.models.SparseGPRegression(X, Y, kernel=rbf, 
-                                                   num_inducing=250)
+                                                   num_inducing=500)
         
-        self.model.optimize('tnc', messages=1, max_iters=100)
+        self.model.optimize('tnc', messages=0, max_iters=500)
 
     def test(self, data):
         return self.model.predict(data)
