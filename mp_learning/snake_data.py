@@ -118,6 +118,8 @@ class Model:
         self.disp_along_heading = []
         self.heading_change_norm = []
         self.heading_change = []
+        self.box_l = []
+        self.box_w = []
 
         with open(self.datapath, 'r') as infile:
             data = infile.readlines()
@@ -153,15 +155,15 @@ class Model:
         self.states = np.asarray(self.states, dtype=np.float32)
 
         # 2 - Remove displacement(sqrt(dx^2+dy^2) middle link) < 3.0
-        disp_thresh = []
-        for i,st in enumerate(self.states):
-            disp_10 = np.sqrt(np.square(self.states[i,20,39] - self.states[i,10,39]) + 
-                              np.square(self.states[i,20,40] - self.states[i,10,40]))
-            if disp_10 > 5.0:
-                disp_thresh.append(i)
-        self.states = self.states[disp_thresh]
-        self.controls = self.controls[disp_thresh]
-        self.durations = self.durations[disp_thresh]
+        #disp_thresh = []
+        #for i,st in enumerate(self.states):
+        #    disp_10 = np.sqrt(np.square(self.states[i,20,39] - self.states[i,10,39]) + 
+        #                      np.square(self.states[i,20,40] - self.states[i,10,40]))
+        #    if disp_10 > 5.0:
+        #        disp_thresh.append(i)
+        #self.states = self.states[disp_thresh]
+        #self.controls = self.controls[disp_thresh]
+        #self.durations = self.durations[disp_thresh]
 
         # FILTER: Keep only stable gaits (>5 consecutive cycles within +/- 5 deg displacement)
         # COMPUTE: (1) disp: total diplacement (2) disp_angles: angle of disp of center link (3) disp_along_heading
@@ -169,6 +171,8 @@ class Model:
         for i in range(0,self.states.shape[0]):
             cons_cycs = 0
             stable_val = 0.0
+            box_l = 0.0
+            box_w = 0.0
             for j in range(self.states.shape[1]-1,1,-1):
                 start_disp = np.asarray(self.states[i,j-1,39:41])
                 end_disp = np.asarray(self.states[i,j,39:41])
@@ -186,7 +190,33 @@ class Model:
                 disp_along_heading = np.dot(end_vec,slope_unit)
                 
                 head_chg = angle_between(start_slope, end_slope)*180/np.pi
+
+                axis_aligned = angle_between(start_slope, np.asarray([1,0]))
                 
+                if cons_cycs < 5:
+                    max_x = -10000.0
+                    max_y = -10000.0
+                    min_x = 10000.0
+                    min_y = 10000.0
+                    for idx in range(0,7):
+                        x = self.states[i,j,idx*13]
+                        y = self.states[i,j,(idx*13)+1]
+                        x_r = x*np.cos(-axis_aligned) - y*(np.sin(-axis_aligned))
+                        y_r = x*np.sin(axis_aligned) + y*(np.cos(-axis_aligned))
+                        if x_r < min_x:
+                            min_x = x_r
+                        if x_r > max_x:
+                            max_x = x_r
+                        if y_r < min_y:
+                            min_y = y_r
+                        if y_r > max_y:
+                            max_y = y_r
+                    if (max_x - min_x + 4) > box_l:
+                        box_l = (max_x - min_x + 4)
+                    if (max_y - min_y + 4) > box_w:
+                        box_w = (max_y - min_y + 4)
+
+
                 if j == self.states.shape[1]-1:
                     stable_val = disp_angle
                     self.disp_along_heading.append(disp_along_heading * 1000.0 / self.durations[i])
@@ -199,12 +229,18 @@ class Model:
                 else:
                     break
             if cons_cycs >= 5:
+                self.box_l.append(box_l)
+                self.box_w.append(box_w)
                 stable_idxs.append(i)
         self.disp_along_heading = np.asarray(self.disp_along_heading)
         self.disp_angles = np.asarray(self.disp_angles)
         self.disp = np.asarray(self.disp)
         self.heading_change_norm = np.asarray(self.heading_change_norm)
         self.heading_change = np.asarray(self.heading_change)
+        self.box_l = np.asarray(self.box_l)
+        self.box_w = np.asarray(self.box_w)
+        
+        print "Before Trimming: ", self.controls.shape
 
         self.disp = self.disp[stable_idxs]
         self.disp_angles = self.disp_angles[stable_idxs]
@@ -221,10 +257,10 @@ class Model:
         testing_idx = indices[self.controls.shape[0]*0.9:].astype(int)
 
         self.train_data = self.controls[training_idx, :]
-        self.train_labels = self.heading_change_norm[training_idx, :]
+        self.train_labels = np.concatenate((self.heading_change_norm[training_idx, :], self.disp_along_heading[training_idx, :]), axis=1) 
 
         self.test_data = self.controls[testing_idx, :]
-        self.test_labels = self.heading_change_norm[testing_idx, :]
+        self.test_labels = np.concatenate((self.heading_change_norm[testing_idx, :], self.disp_along_heading[testing_idx, :]), axis=1)
 
 
     def normalize_labels(self):
@@ -520,8 +556,7 @@ class SGPRegression(Model):
         Y = np.array(labels)
         
         rbf = GPy.kern.RBF(X.shape[1])
-        self.model = GPy.models.SparseGPRegression(X, Y, kernel=rbf, 
-                                                   num_inducing=500)
+        self.model = GPy.models.GPRegression(X, Y, kernel=rbf)
         
         self.model.optimize('tnc', messages=0, max_iters=500)
 
