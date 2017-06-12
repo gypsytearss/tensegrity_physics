@@ -15,9 +15,11 @@
 *.hdf5
 
 #others
+*.ogv
 *.bak
 *.npy
 *.txt
+.ipynb_checkpoints/*
 toycar_data
 toycar_labels
 toycar_data_100sample
